@@ -16,6 +16,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
+#include <dirent.h>
+#include <time.h>
+#include <sys/stat.h> // library to import mkdir syscall
+#include <fcntl.h> // library to import openat
 
 /*
   Function Declarations for builtin shell commands:
@@ -23,6 +28,9 @@
 int lsh_cd(char **args);
 int lsh_help(char **args);
 int lsh_exit(char **args);
+int lsh_mkdir(char **args);
+int lsh_rm(char **args);
+int lsh_touch(char **args);
 
 /*
   List of builtin commands, followed by their corresponding functions.
@@ -30,13 +38,19 @@ int lsh_exit(char **args);
 char *builtin_str[] = {
   "cd",
   "help",
-  "exit"
+  "exit",
+  "mkdir",
+  "rm",
+  "touch"
 };
 
 int (*builtin_func[]) (char **) = {
   &lsh_cd,
   &lsh_help,
-  &lsh_exit
+  &lsh_exit,
+  &lsh_mkdir,
+  &lsh_rm,
+  &lsh_touch
 };
 
 int lsh_num_builtins() {
@@ -48,7 +62,7 @@ int lsh_num_builtins() {
 */
 
 /**
-   @brief Builtin command: change directory.
+   @brief Bultin command: change directory.
    @param args List of args.  args[0] is "cd".  args[1] is the directory.
    @return Always returns 1, to continue executing.
  */
@@ -84,6 +98,55 @@ int lsh_help(char **args)
   return 1;
 }
 
+/**
+  @brief Builtin comand: create a new directory 
+  @param args List of args. args[1] is name to new directory
+  @return Always returns 1, to continue executing
+ */
+int lsh_mkdir(char **args){
+  if (args[1] == NULL){
+    fprintf(stderr, "lsh: expected argument to \"mkdir\"\n");
+  }else{
+    if(mkdir(args[1],S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1){
+      perror("fail to create directoy");
+    }
+  }
+  return 1;
+}
+
+/**
+   @brief Builtin comand: remove file in especific directory
+   @param args List of args. args[1] is name to delete file
+   @return Always return 1, to continue executing
+ */
+int lsh_rm(char **args){
+  if (args[1] == NULL){
+    fprintf(stderr, "lsh: expected argument to \"rm\"\n");
+  }else{
+    if(unlink(args[1]) == -1){
+      perror("fail to delete file");
+    }
+  }
+  return 1;
+}
+
+/**
+   @brief  Builtin comand: create file in actually directory
+   @param args List of args. args[1] is name to create file
+   @return Always return 1, to continue executing
+ */
+int lsh_touch(char **args){
+  if (args[1] == NULL){
+    fprintf(stderr, "lsh: expected argument to \"touch\"\n");
+  }else{
+    int file = open(args[1],O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+    if( file == -1){
+      perror("fail to create file");
+    }
+    close(file);
+  }
+  return 1;
+}
 /**
    @brief Builtin command: exit.
    @param args List of args.  Not examined.
